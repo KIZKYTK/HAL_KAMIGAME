@@ -5,15 +5,15 @@ using UnityEngine;
 public class Move_Player : MonoBehaviour
 {
     [SerializeField, Header("移動速度")]
-    public float speedFloat;
+    public float speedFloat = 5.0f;
     [SerializeField, Header("ジャンプ力")]
-    public float jumpPower;
-    [SerializeField, Header("Transform")]
-    public new Transform transform;
-    [SerializeField, Header("LayerMask")]
-    public LayerMask layer;
+    public float jumpPower = 10.0f;
     [SerializeField, Header("Raduis")]
-    private float radius = 0.3f;
+    private float radius = 0.5f;
+    [SerializeField, Header("接触判定")]
+    public Transform groundCheck;
+    [SerializeField, Header("LayerMask")]
+    public LayerMask groundLayer;
 
     // リジットボディ情報取得用変数
     private Rigidbody2D rb;
@@ -24,14 +24,14 @@ public class Move_Player : MonoBehaviour
     void Start()
     {
         // rigidbodyの情報を取得
-        rb=GetComponent<Rigidbody2D>();
+        rb = GetComponent<Rigidbody2D>();
     }
 
     // Update is called once per frame
     void Update()
     {
-        touchFg = Physics2D.OverlapCircle(transform.position, radius, layer);
-        Debug.Log("touchFg: " + touchFg);
+        // touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
+        // Debug.Log("touchFg: " + touchFg);
 
         // A/D or ←/→ で横移動
         float mx = Input.GetAxisRaw("Horizontal");
@@ -45,13 +45,19 @@ public class Move_Player : MonoBehaviour
         }
     }
 
+    private void FixedUpdate()
+    {
+        touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
+        Debug.Log("touchFg: " + touchFg);
+    }
+
     // 判定範囲を可視化
     private void OnDrawGizmosSelected()
     {
-        if (transform != null)
+        if (groundCheck != null)
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, radius);
+            Gizmos.color = touchFg ? Color.green : Color.red;
+            Gizmos.DrawWireSphere(groundCheck.position, radius);
         }
     }
 }
