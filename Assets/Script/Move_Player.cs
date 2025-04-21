@@ -14,6 +14,8 @@ public class Move_Player : MonoBehaviour
     public Transform groundCheck;
     [SerializeField, Header("LayerMask")]
     public LayerMask groundLayer;
+    [SerializeField, Header("ログ表示")]
+    public bool showLog = true;
 
     // リジットボディ情報取得用変数
     private Rigidbody2D rb;
@@ -48,7 +50,7 @@ public class Move_Player : MonoBehaviour
     private void FixedUpdate()
     {
         touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
-        Debug.Log("touchFg: " + touchFg);
+        if(showLog) Debug.Log("touchFg: " + touchFg);
     }
 
     // 判定範囲を可視化
