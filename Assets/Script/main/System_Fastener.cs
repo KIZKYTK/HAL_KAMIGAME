@@ -19,6 +19,8 @@ public class System_Fastener : MonoBehaviour
     private Collider2D triggerCollider;
     private GameObject playerObj;
 
+    private static bool isLocked = false; // ロック機構
+
     void Start()
     {
         triggerCollider = GetComponent<Collider2D>();
@@ -58,6 +60,8 @@ public class System_Fastener : MonoBehaviour
 
     void OnTriggerStay2D(Collider2D other)
     {
+        if (isLocked) return; // ロックされている間は他の Fastener が干渉しない
+
         if (other.CompareTag("Player"))
         {
             playerObj = other.gameObject;
@@ -121,7 +125,9 @@ public class System_Fastener : MonoBehaviour
 
     void LongPressAction()
     {
-        if (!playerObj) return;
+        if (isLocked || !playerObj) return;
+
+        isLocked = true; // 長押しの間、他の処理が干渉しないようにロック
 
         Transform playerTrans = playerObj.transform;
         Collider2D playerCol = playerObj.GetComponent<Collider2D>();
@@ -131,64 +137,44 @@ public class System_Fastener : MonoBehaviour
         Bounds playerBounds = playerCol.bounds;
 
         Vector3 objCenter = objBounds.center;
+        Vector3 targetPos = Vector3.zero;
 
         Vector3 axis = Vector3.zero;
         float objHalfExtent = 0f;
 
         // 横と縦の処理を厳密に分ける
-        if (useHorizontal)
+        if (useHorizontal && !useVertical) // 横だけ動作
         {
-            // 横方向の移動
             axis = triggerCollider.transform.right.normalized;
             objHalfExtent = objBounds.extents.x; // 横方向の半分の幅
-            MoveHorizontally(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
+            targetPos = CalculateHorizontalTargetPosition(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
         }
-        else if (useVertical)
+        else if (useVertical && !useHorizontal) // 縦だけ動作
         {
-            // 縦方向の移動
             axis = triggerCollider.transform.up.normalized;
             objHalfExtent = objBounds.extents.y; // 縦方向の半分の高さ
-            MoveVertically(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
+            targetPos = CalculateVerticalTargetPosition(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
         }
-    }
-
-    void MoveHorizontally(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
-    {
-        // プレイヤーの移動に関するコーナー計算
-        Vector3[] corners = new Vector3[8];
-        Vector3 min = playerBounds.min;
-        Vector3 max = playerBounds.max;
-
-        int i = 0;
-        for (int x = 0; x <= 1; x++)
-            for (int y = 0; y <= 1; y++)
-                for (int z = 0; z <= 1; z++)
-                    corners[i++] = new Vector3(
-                        x == 0 ? min.x : max.x,
-                        y == 0 ? min.y : max.y,
-                        z == 0 ? min.z : max.z
-                    );
-
-        float maxProjection = 0f;
-        foreach (var corner in corners)
+        else if (useHorizontal && useVertical) // 両方動作している場合、優先度を付ける
         {
-            float proj = Mathf.Abs(Vector3.Dot(corner - playerBounds.center, axis));
-            if (proj > maxProjection)
-                maxProjection = proj;
+            // 動かす優先順を決定
+            if (playerTrans.position.y > objCenter.y)
+            {
+                // 縦方向優先
+                axis = triggerCollider.transform.up.normalized;
+                objHalfExtent = objBounds.extents.y;
+                targetPos = CalculateVerticalTargetPosition(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
+            }
+            else
+            {
+                // 横方向優先
+                axis = triggerCollider.transform.right.normalized;
+                objHalfExtent = objBounds.extents.x;
+                targetPos = CalculateHorizontalTargetPosition(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
+            }
         }
 
-        // 横方向のターゲット位置を計算
-        Vector3 targetA = objCenter - axis * (objHalfExtent - maxProjection);
-        Vector3 targetB = objCenter + axis * (objHalfExtent - maxProjection);
-
-        Vector3 toPlayer = playerTrans.position - objCenter;
-        float dot = Vector3.Dot(toPlayer, axis);
-
-        // 目標位置を決定（横方向）
-        Vector3 targetPos = (dot >= 0) ? targetA : targetB;
-
-        // 横方向の移動を実行
-        if (Mathf.Abs(playerTrans.position.y - targetPos.y) > Mathf.Epsilon)
+        if (targetPos != Vector3.zero)
         {
             StopAllCoroutines();
             StartCoroutine(SmoothMove(playerTrans, targetPos, 0.3f, () =>
@@ -196,60 +182,34 @@ public class System_Fastener : MonoBehaviour
                 if (triggerCollider)
                 {
                     triggerCollider.isTrigger = !triggerCollider.isTrigger;
-                    Debug.Log("LongPress (Horizontal): Collider trigger = " + triggerCollider.isTrigger);
+                    Debug.Log("LongPress: Collider trigger = " + triggerCollider.isTrigger);
                 }
+
+                isLocked = false; // 処理完了後、ロック解除
             }));
         }
     }
 
-    void MoveVertically(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
+    Vector3 CalculateHorizontalTargetPosition(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
     {
-        // プレイヤーの移動に関するコーナー計算
-        Vector3[] corners = new Vector3[8];
-        Vector3 min = playerBounds.min;
-        Vector3 max = playerBounds.max;
-
-        int i = 0;
-        for (int x = 0; x <= 1; x++)
-            for (int y = 0; y <= 1; y++)
-                for (int z = 0; z <= 1; z++)
-                    corners[i++] = new Vector3(
-                        x == 0 ? min.x : max.x,
-                        y == 0 ? min.y : max.y,
-                        z == 0 ? min.z : max.z
-                    );
-
-        float maxProjection = 0f;
-        foreach (var corner in corners)
-        {
-            float proj = Mathf.Abs(Vector3.Dot(corner - playerBounds.center, axis));
-            if (proj > maxProjection)
-                maxProjection = proj;
-        }
-
-        // 縦方向のターゲット位置を計算
-        Vector3 targetA = objCenter - axis * (objHalfExtent - maxProjection);
-        Vector3 targetB = objCenter + axis * (objHalfExtent - maxProjection);
+        Vector3 targetA = objCenter - axis * (objHalfExtent);
+        Vector3 targetB = objCenter + axis * (objHalfExtent);
 
         Vector3 toPlayer = playerTrans.position - objCenter;
         float dot = Vector3.Dot(toPlayer, axis);
 
-        // 目標位置を決定（縦方向）
-        Vector3 targetPos = (dot >= 0) ? targetA : targetB;
+        return (dot >= 0) ? targetA : targetB;
+    }
 
-        // 縦方向の移動を実行
-        if (Mathf.Abs(playerTrans.position.x - targetPos.x) > Mathf.Epsilon)
-        {
-            StopAllCoroutines();
-            StartCoroutine(SmoothMove(playerTrans, targetPos, 0.3f, () =>
-            {
-                if (triggerCollider)
-                {
-                    triggerCollider.isTrigger = !triggerCollider.isTrigger;
-                    Debug.Log("LongPress (Vertical): Collider trigger = " + triggerCollider.isTrigger);
-                }
-            }));
-        }
+    Vector3 CalculateVerticalTargetPosition(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
+    {
+        Vector3 targetA = objCenter - axis * (objHalfExtent);
+        Vector3 targetB = objCenter + axis * (objHalfExtent);
+
+        Vector3 toPlayer = playerTrans.position - objCenter;
+        float dot = Vector3.Dot(toPlayer, axis);
+
+        return (dot >= 0) ? targetA : targetB;
     }
 
     IEnumerator SmoothMove(Transform obj, Vector3 target, float duration, System.Action onComplete = null)
@@ -268,5 +228,4 @@ public class System_Fastener : MonoBehaviour
         obj.position = target;
         onComplete?.Invoke(); // 終了後にコールバックを実行
     }
-
 }

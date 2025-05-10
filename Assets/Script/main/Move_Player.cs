@@ -32,16 +32,13 @@ public class Move_Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
-        // Debug.Log("touchFg: " + touchFg);
-
         // A/D or ←/→ で横移動
         float mx = Input.GetAxisRaw("Horizontal");
         // 横移動のみ更新
         rb.velocity = new Vector2(mx * speedFloat, rb.velocity.y);
 
         // ジャンプ処理
-        if(Input.GetButtonDown("Jump") && touchFg)
+        if (Input.GetButtonDown("Jump") && touchFg)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpPower);
         }
@@ -49,8 +46,9 @@ public class Move_Player : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // OverlapCircleを使って複数のレイヤーで接触判定を行う
         touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
-        if(showLog) Debug.Log("touchFg: " + touchFg);
+        if (showLog) Debug.Log("touchFg: " + touchFg);
     }
 
     // 判定範囲を可視化
