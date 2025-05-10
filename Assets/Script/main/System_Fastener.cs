@@ -1,5 +1,5 @@
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 
 public class System_Fastener : MonoBehaviour
 {
@@ -7,10 +7,11 @@ public class System_Fastener : MonoBehaviour
     [Range(0f, 0.5f)]
     public float edgePercent = 0.1f;
 
+    [Header("有効軸")]
     public bool useHorizontal = true;
     public bool useVertical = false;
 
-    private float longPress_time = 0.3f;
+    private float longPress_time = 0.2f;
     private float press_time = 0.0f;
     private bool isPressing = false;
     private bool canInput = false;
@@ -40,7 +41,7 @@ public class System_Fastener : MonoBehaviour
         if (Input.GetKeyUp(KeyCode.F))
         {
             float heldDuration = Time.time - press_time;
-            isPressing = true;
+            isPressing = false;
 
             if (heldDuration < longPress_time)
             {
@@ -60,7 +61,6 @@ public class System_Fastener : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerObj = other.gameObject;
-
             Vector2 playerPos = other.transform.position;
             Bounds bounds = triggerCollider.bounds;
 
@@ -87,16 +87,6 @@ public class System_Fastener : MonoBehaviour
         }
     }
 
-    void OnTriggerExit2D(Collider2D other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            canInput = false;
-            isPressing = false;
-            playerObj = null;
-        }
-    }
-
     void OnDrawGizmos()
     {
         Collider2D col = GetComponent<Collider2D>();
@@ -108,33 +98,16 @@ public class System_Fastener : MonoBehaviour
         if (useHorizontal)
         {
             float edgeWidth = bounds.size.x * edgePercent;
-            DrawRect(new Rect(bounds.min.x, bounds.min.y, edgeWidth, bounds.size.y));
-            DrawRect(new Rect(bounds.max.x - edgeWidth, bounds.min.y, edgeWidth, bounds.size.y));
+            Gizmos.DrawWireCube(new Vector3(bounds.min.x + edgeWidth / 2, bounds.center.y, 0), new Vector3(edgeWidth, bounds.size.y, 0));
+            Gizmos.DrawWireCube(new Vector3(bounds.max.x - edgeWidth / 2, bounds.center.y, 0), new Vector3(edgeWidth, bounds.size.y, 0));
         }
 
         if (useVertical)
         {
             float edgeHeight = bounds.size.y * edgePercent;
-            DrawRect(new Rect(bounds.min.x, bounds.min.y, bounds.size.x, edgeHeight));
-            DrawRect(new Rect(bounds.min.x, bounds.max.y - edgeHeight, bounds.size.x, edgeHeight));
+            Gizmos.DrawWireCube(new Vector3(bounds.center.x, bounds.min.y + edgeHeight / 2, 0), new Vector3(bounds.size.x, edgeHeight, 0));
+            Gizmos.DrawWireCube(new Vector3(bounds.center.x, bounds.max.y - edgeHeight / 2, 0), new Vector3(bounds.size.x, edgeHeight, 0));
         }
-    }
-
-    void DrawRect(Rect rect)
-    {
-        Vector3 bottomLeft = new Vector3(rect.xMin, rect.yMin, 0f);
-        Vector3 bottomRight = new Vector3(rect.xMax, rect.yMin, 0f);
-        Vector3 topRight = new Vector3(rect.xMax, rect.yMax, 0f);
-        Vector3 topLeft = new Vector3(rect.xMin, rect.yMax, 0f);
-
-        Gizmos.DrawLine(bottomLeft, bottomRight);
-        Gizmos.DrawLine(bottomRight, topRight);
-        Gizmos.DrawLine(topRight, topLeft);
-        Gizmos.DrawLine(topLeft, bottomLeft);
-
-        Vector3 center = rect.center;
-        Vector3 size = new Vector3(rect.width, rect.height, 0.01f);
-        Gizmos.DrawCube(center, size);
     }
 
     void ShortPressAction()
@@ -159,24 +132,29 @@ public class System_Fastener : MonoBehaviour
 
         Vector3 objCenter = objBounds.center;
 
-        Vector3 axis;
-        float objHalfExtent;
+        Vector3 axis = Vector3.zero;
+        float objHalfExtent = 0f;
 
+        // 横と縦の処理を厳密に分ける
         if (useHorizontal)
         {
+            // 横方向の移動
             axis = triggerCollider.transform.right.normalized;
-            objHalfExtent = objBounds.extents.magnitude;
+            objHalfExtent = objBounds.extents.x; // 横方向の半分の幅
+            MoveHorizontally(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
         }
         else if (useVertical)
         {
+            // 縦方向の移動
             axis = triggerCollider.transform.up.normalized;
-            objHalfExtent = objBounds.extents.magnitude;
+            objHalfExtent = objBounds.extents.y; // 縦方向の半分の高さ
+            MoveVertically(playerTrans, objCenter, axis, objHalfExtent, playerBounds);
         }
-        else
-        {
-            return; // 無効な設定
-        }
+    }
 
+    void MoveHorizontally(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
+    {
+        // プレイヤーの移動に関するコーナー計算
         Vector3[] corners = new Vector3[8];
         Vector3 min = playerBounds.min;
         Vector3 max = playerBounds.max;
@@ -199,26 +177,81 @@ public class System_Fastener : MonoBehaviour
                 maxProjection = proj;
         }
 
+        // 横方向のターゲット位置を計算
         Vector3 targetA = objCenter - axis * (objHalfExtent - maxProjection);
         Vector3 targetB = objCenter + axis * (objHalfExtent - maxProjection);
 
         Vector3 toPlayer = playerTrans.position - objCenter;
         float dot = Vector3.Dot(toPlayer, axis);
 
+        // 目標位置を決定（横方向）
         Vector3 targetPos = (dot >= 0) ? targetA : targetB;
 
-        StopAllCoroutines();
-        StartCoroutine(SmoothMove(playerTrans, targetPos, 0.3f, () => {
-            // 長押しの移動後に物理判定を切り替える
-            if (triggerCollider)
+        // 横方向の移動を実行
+        if (Mathf.Abs(playerTrans.position.y - targetPos.y) > Mathf.Epsilon)
+        {
+            StopAllCoroutines();
+            StartCoroutine(SmoothMove(playerTrans, targetPos, 0.3f, () =>
             {
-                triggerCollider.isTrigger = !triggerCollider.isTrigger;
-                Debug.Log("LongPress: Collider trigger = " + triggerCollider.isTrigger);
-            }
-        }));
+                if (triggerCollider)
+                {
+                    triggerCollider.isTrigger = !triggerCollider.isTrigger;
+                    Debug.Log("LongPress (Horizontal): Collider trigger = " + triggerCollider.isTrigger);
+                }
+            }));
+        }
     }
 
-    // 移動コルーチンにコールバック追加
+    void MoveVertically(Transform playerTrans, Vector3 objCenter, Vector3 axis, float objHalfExtent, Bounds playerBounds)
+    {
+        // プレイヤーの移動に関するコーナー計算
+        Vector3[] corners = new Vector3[8];
+        Vector3 min = playerBounds.min;
+        Vector3 max = playerBounds.max;
+
+        int i = 0;
+        for (int x = 0; x <= 1; x++)
+            for (int y = 0; y <= 1; y++)
+                for (int z = 0; z <= 1; z++)
+                    corners[i++] = new Vector3(
+                        x == 0 ? min.x : max.x,
+                        y == 0 ? min.y : max.y,
+                        z == 0 ? min.z : max.z
+                    );
+
+        float maxProjection = 0f;
+        foreach (var corner in corners)
+        {
+            float proj = Mathf.Abs(Vector3.Dot(corner - playerBounds.center, axis));
+            if (proj > maxProjection)
+                maxProjection = proj;
+        }
+
+        // 縦方向のターゲット位置を計算
+        Vector3 targetA = objCenter - axis * (objHalfExtent - maxProjection);
+        Vector3 targetB = objCenter + axis * (objHalfExtent - maxProjection);
+
+        Vector3 toPlayer = playerTrans.position - objCenter;
+        float dot = Vector3.Dot(toPlayer, axis);
+
+        // 目標位置を決定（縦方向）
+        Vector3 targetPos = (dot >= 0) ? targetA : targetB;
+
+        // 縦方向の移動を実行
+        if (Mathf.Abs(playerTrans.position.x - targetPos.x) > Mathf.Epsilon)
+        {
+            StopAllCoroutines();
+            StartCoroutine(SmoothMove(playerTrans, targetPos, 0.3f, () =>
+            {
+                if (triggerCollider)
+                {
+                    triggerCollider.isTrigger = !triggerCollider.isTrigger;
+                    Debug.Log("LongPress (Vertical): Collider trigger = " + triggerCollider.isTrigger);
+                }
+            }));
+        }
+    }
+
     IEnumerator SmoothMove(Transform obj, Vector3 target, float duration, System.Action onComplete = null)
     {
         Vector3 startPos = obj.position;
