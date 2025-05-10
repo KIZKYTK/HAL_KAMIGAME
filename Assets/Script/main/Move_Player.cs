@@ -8,8 +8,8 @@ public class Move_Player : MonoBehaviour
     public float speedFloat = 5.0f;
     [SerializeField, Header("ジャンプ力")]
     public float jumpPower = 10.0f;
-    [SerializeField, Header("Raduis")]
-    private float radius = 0.5f;
+    [SerializeField, Header("Radius")]
+    public float radius = 0.5f;            // Inspector で調整できるよう public に
     [SerializeField, Header("接触判定")]
     public Transform groundCheck;
     [SerializeField, Header("LayerMask")]
@@ -17,41 +17,43 @@ public class Move_Player : MonoBehaviour
     [SerializeField, Header("ログ表示")]
     public bool showLog = true;
 
-    // リジットボディ情報取得用変数
+    // Rigidbody2D 取得用
     private Rigidbody2D rb;
-    // 地面との接触フラグ
+    // 地面接触フラグ
     private bool touchFg;
 
-    // Start is called before the first frame update
     void Start()
     {
-        // rigidbodyの情報を取得
         rb = GetComponent<Rigidbody2D>();
+        // 念のため倒れ防止
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        // A/D or ←/→ で横移動
+        // 左右移動
         float mx = Input.GetAxisRaw("Horizontal");
-        // 横移動のみ更新
         rb.velocity = new Vector2(mx * speedFloat, rb.velocity.y);
 
-        // ジャンプ処理
+        // ジャンプ
         if (Input.GetButtonDown("Jump") && touchFg)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpPower);
         }
     }
 
-    private void FixedUpdate()
+    void FixedUpdate()
     {
-        // OverlapCircleを使って複数のレイヤーで接触判定を行う
+        // 地面接触チェック
         touchFg = Physics2D.OverlapCircle(groundCheck.position, radius, groundLayer);
         if (showLog) Debug.Log("touchFg: " + touchFg);
     }
 
-    // 判定範囲を可視化
+    public bool IsGrounded()
+    {
+        return touchFg;
+    }
+
     private void OnDrawGizmosSelected()
     {
         if (groundCheck != null)
