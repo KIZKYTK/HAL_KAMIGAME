@@ -7,6 +7,8 @@ TagManager:
   - Handle
   - Fanstener
   - Goal
+  - Fastener
+  - Item
   layers:
   - Default
   - TransparentFX
