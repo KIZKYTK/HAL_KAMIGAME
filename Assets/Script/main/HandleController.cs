@@ -20,13 +20,13 @@ public class HandleController : MonoBehaviour
     public bool isMoving { get; private set; } = false;  // 移動中フラグ
 
     /* ===== 参照キャッシュ ===== */
-    private FastenerController rail;                      // 親ファスナー
+    private System_Fastener rail;                      // 親ファスナー
 
     /*--------------------------------------------------*/
     void Start()
     {
         // 親階層から FastenerController を取得
-        rail = GetComponentInParent<FastenerController>();
+        rail = GetComponentInParent<System_Fastener>();
     }
 
     /* ---------------- 短押し：取っ手のみ移動 ---------------- */
