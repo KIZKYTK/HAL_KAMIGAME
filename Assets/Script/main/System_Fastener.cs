@@ -1,83 +1,52 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// ファスナー本体：Collider 有効 / 無効 と透明度を切替。  
+/// Inspector のプルダウンで初期状態（Solid / Ghost）を選べる。
+/// </summary>
+[RequireComponent(typeof(EdgeCollider2D), typeof(SpriteRenderer))]
 public class System_Fastener : MonoBehaviour
 {
-    /*========= Inspector で選択 =========*/
-    [Header("初期状態 (編集モードで変更可)")]
-    [SerializeField] private State stateInEditor = State.Solid;   // プルダウン表示
+    public enum State { Solid, Ghost }
 
-    /*========= 列挙型 =========*/
-    public enum State { Solid, Ghost }   // Solid＝当たり有効 / Ghost＝当たり無効
+    [Header("初期状態 (編集で変更可)")]
+    [SerializeField] private State stateInEditor = State.Solid;
 
-    /*========= パラメータ =========*/
-    [Header("スライド速度")]
-    public float slideSpeed = 8f;        // 取っ手が利用する参考値
-
-    /*========= プロパティ =========*/
     public State CurrentState { get; private set; }
+    public float slideSpeed = 8f;          // 取っ手側が参照する場合がある
 
-    /*========= キャッシュ =========*/
-    EdgeCollider2D edgeCol;              // 踏み判定
-    SpriteRenderer sr;                   // 透明度変更
+    EdgeCollider2D edgeCol;
+    SpriteRenderer sr;
 
-    /*--------------------------------------------------------------
-     *  OnValidate : エディタ上で値が変わったら即反映
-     *------------------------------------------------------------*/
 #if UNITY_EDITOR
-    void OnValidate()
+    void OnValidate()                      // エディタで値を変えた瞬間に呼ばれる
     {
-        // まだ Awake 前のことがあるので毎回 GetComponent
-        if (edgeCol == null) edgeCol = GetComponent<EdgeCollider2D>();
-        if (sr == null) sr = GetComponent<SpriteRenderer>();
-
-        SetState(stateInEditor, true);   // 強制反映
+        if (!edgeCol) edgeCol = GetComponent<EdgeCollider2D>();
+        if (!sr) sr = GetComponent<SpriteRenderer>();
+        SetState(stateInEditor, true);     // その場で反映
     }
 #endif
 
-    /*--------------------------------------------------------------*/
     void Awake()
     {
         edgeCol = GetComponent<EdgeCollider2D>();
         sr = GetComponent<SpriteRenderer>();
     }
 
-    void Start()
-    {
-        // ゲーム開始時に Inspector で設定された状態で初期化
-        SetState(stateInEditor, true);
-    }
+    void Start() => SetState(stateInEditor, true);      // 実行時に初期化
 
-    /*--------------------------------------------------------------
-     *  公開メソッド : 状態トグル
-     *------------------------------------------------------------*/
-    public void Toggle()
-    {
+    public void Toggle() =>
         SetState(CurrentState == State.Solid ? State.Ghost : State.Solid);
-    }
 
-    /*--------------------------------------------------------------
-     *  内部実装 : 状態適用
-     *------------------------------------------------------------*/
-    void SetState(State newState, bool force = false)
+    void SetState(State s, bool force = false)
     {
-        if (!force && newState == CurrentState) return;
-
-        CurrentState = newState;
-
-        // コライダー有効／無効
-        edgeCol.enabled = (newState == State.Solid);
-
-        // スプライト透明度
-        var c = sr.color;
-        c.a = (newState == State.Solid ? 1f : 0.4f);
-        sr.color = c;
+        if (!force && s == CurrentState) return;
+        CurrentState = s;
+        edgeCol.enabled = (s == State.Solid);           // 当たり判定
+        var c = sr.color; c.a = (s == State.Solid ? 1f : 0.4f); sr.color = c;
     }
 
-    /*--------------------------------------------------------------
-     *  レール両端座標を返す（取っ手が使用）
-     *------------------------------------------------------------*/
+    /// <summary>レール両端のワールド座標を返す</summary>
     public (Vector2, Vector2) GetEndPoints()
     {
         Vector2 p0 = transform.TransformPoint(edgeCol.points[0]);
