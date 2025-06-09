@@ -1,8 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// ファスナー本体：Collider 有効 / 無効 と透明度を切替。  
-/// Inspector のプルダウンで初期状態（Solid / Ghost）を選べる。
+/// ファスナー本体：状態に応じて Collider と透明度、Sprite を切替
 /// </summary>
 [RequireComponent(typeof(EdgeCollider2D), typeof(SpriteRenderer))]
 public class System_Fastener : MonoBehaviour
@@ -12,18 +11,22 @@ public class System_Fastener : MonoBehaviour
     [Header("初期状態 (編集で変更可)")]
     [SerializeField] private State stateInEditor = State.Solid;
 
+    [Header("状態ごとの Sprite")]
+    public Sprite solidSprite;              // 実体用画像
+    public Sprite ghostSprite;              // 虚体用画像
+
     public State CurrentState { get; private set; }
-    public float slideSpeed = 8f;          // 取っ手側が参照する場合がある
+    public float slideSpeed = 8f;           // 取っ手側が参照用に使う場合あり
 
     EdgeCollider2D edgeCol;
     SpriteRenderer sr;
 
 #if UNITY_EDITOR
-    void OnValidate()                      // エディタで値を変えた瞬間に呼ばれる
+    void OnValidate()                       // Inspector 値が変わった瞬間呼ばれる
     {
         if (!edgeCol) edgeCol = GetComponent<EdgeCollider2D>();
         if (!sr) sr = GetComponent<SpriteRenderer>();
-        SetState(stateInEditor, true);     // その場で反映
+        SetState(stateInEditor, true);      // その場で反映
     }
 #endif
 
@@ -33,17 +36,34 @@ public class System_Fastener : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
     }
 
-    void Start() => SetState(stateInEditor, true);      // 実行時に初期化
+    void Start() => SetState(stateInEditor, true);      // 実行時初期化
 
+    /*--- 外部からのトグル呼び出し ---*/
     public void Toggle() =>
         SetState(CurrentState == State.Solid ? State.Ghost : State.Solid);
 
+    /*--------------------------------------------------------------
+     * 状態を適用：Collider・透明度・Sprite 全てここで管理
+     *------------------------------------------------------------*/
     void SetState(State s, bool force = false)
     {
         if (!force && s == CurrentState) return;
+
         CurrentState = s;
-        edgeCol.enabled = (s == State.Solid);           // 当たり判定
-        var c = sr.color; c.a = (s == State.Solid ? 1f : 0.4f); sr.color = c;
+
+        /* 当たり判定 ON/OFF */
+        edgeCol.enabled = (s == State.Solid);
+
+        /* 透明度変更 */
+        var c = sr.color;
+        c.a = (s == State.Solid ? 1f : 0.4f);
+        sr.color = c;
+
+        /* Sprite 切替（null チェック込み）*/
+        if (s == State.Solid && solidSprite)
+            sr.sprite = solidSprite;
+        else if (s == State.Ghost && ghostSprite)
+            sr.sprite = ghostSprite;
     }
 
     /// <summary>レール両端のワールド座標を返す</summary>
