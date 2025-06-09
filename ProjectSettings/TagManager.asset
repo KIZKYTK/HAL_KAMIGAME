@@ -9,6 +9,7 @@ TagManager:
   - Goal
   - Fastener
   - Item
+  - BorderLine
   layers:
   - Default
   - TransparentFX
