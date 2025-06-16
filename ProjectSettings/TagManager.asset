@@ -5,7 +5,6 @@ TagManager:
   serializedVersion: 2
   tags:
   - Handle
-  - Fanstener
   - Goal
   - Fastener
   - Item
@@ -55,6 +54,9 @@ TagManager:
     locked: 0
   - name: Fastener
     uniqueID: 126822915
+    locked: 0
+  - name: Goal
+    uniqueID: 685253609
     locked: 0
   - name: Player
     uniqueID: 1925229335
