@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [ExecuteAlways]
@@ -8,11 +6,10 @@ public class Move_Ground : MonoBehaviour
     [System.Flags]
     public enum DirectionFlag
     {
-        None = 0,
         Up = 1 << 0,
         Down = 1 << 1,
         Left = 1 << 2,
-        Right = 1 << 3
+        Right = 1 << 3,
     }
 
     [Header("ˆÚ“®Ý’è")]
