@@ -2,64 +2,117 @@ using System.Collections;
 using UnityEngine;
 
 /// <summary>
-/// 取っ手制御  
-/// ・鍵一致判定は従来どおり  
-/// ・ファスナーの状態に合わせて取っ手 Sprite も自動切替
+/// 取っ手（Handle）制御
+/// ------------------------------------------------------------
+/// 1. requiredKeyId が空なら最初から可視／操作可  
+/// 2. 鍵イベント(PlayerController.OnKeyCollected) を受信すると可視化＆Collider解放  
+/// 3. Solid / Ghost 状態で取っ手 Sprite を自動切替  
+/// 4. 長押し開始時、子ノード SpriteRenderer をプレイヤー方向へ一度だけ回転  
+/// ------------------------------------------------------------
+/// ※ 構造例:
+///   Fastener
+///     └─ HandleRoot   (BoxCollider2D + HandleController)   ← localScale = 1
+///         └─ HandleVisual (SpriteRenderer)                 ← srHandle が参照
 /// </summary>
-[RequireComponent(typeof(BoxCollider2D), typeof(SpriteRenderer))]
+[RequireComponent(typeof(BoxCollider2D))]
 public class HandleController : MonoBehaviour
 {
+    /*========== Inspector に表示する設定値 ==========*/
     [Header("スライド速度 (unit/秒)")]
     public float moveSpeed = 6f;
 
     [Header("必要 keyId (空文字なら鍵不要)")]
     public string requiredKeyId = "red";
 
-    [Header("取っ手用 Sprite")]
-    public Sprite solidHandleSprite;          // 実体時
-    public Sprite ghostHandleSprite;          // 虚体時
+    [Header("取っ手 Sprite")]
+    public Sprite solidHandleSprite;   // ファスナーが Solid の時
+    public Sprite ghostHandleSprite;   // ファスナーが Ghost の時
 
-    public bool isMoving { get; private set; } = false;
+    [Header("長押し開始時にプレイヤー方向へ回転")]
+    public bool rotateToPlayer = true;
+    [Tooltip("取っ手画像の基準向きが+X以外なら角度補正 (例: 上向き=90)")]
+    public float spriteForwardAngle = 0f;
 
-    System_Fastener rail;
-    SpriteRenderer srHandle;
+    [Header("取っ手可視ノード (SpriteRenderer)")]
+    [SerializeField] private SpriteRenderer srHandle;   // HandleVisual の SpriteRenderer
 
-#if UNITY_EDITOR
-    /* 編集モードで Sprite を即時反映 */
-    void OnValidate()
-    {
-        if (!srHandle) srHandle = GetComponent<SpriteRenderer>();
-        if (!rail) rail = GetComponentInParent<System_Fastener>();
-        UpdateHandleSprite();
-    }
-#endif
+    /*========== ランタイム ==========*/
+    public bool isMoving { get; private set; }
 
+    System_Fastener rail;        // 親のファスナー
+    Transform visualTF;          // srHandle の Transform
+
+    /*------------------------------------------------------------*/
     void Start()
     {
         rail = GetComponentInParent<System_Fastener>();
-        srHandle = GetComponent<SpriteRenderer>();
-        UpdateHandleSprite();                 // 初期反映
+
+        // SpriteRenderer 自動取得（Inspector 未設定時の保険）
+        if (!srHandle) srHandle = GetComponentInChildren<SpriteRenderer>(true);
+        if (srHandle) visualTF = srHandle.transform;
+
+        // 鍵未取得なら非表示＆Collider 無効
+        bool unlocked = requiredKeyId == "";
+        if (srHandle) srHandle.enabled = unlocked;
+        var col = GetComponent<Collider2D>();
+        if (col) col.enabled = unlocked;
+
+        UpdateHandleSprite();
+
+        // 鍵イベント購読
+        PlayerController.OnKeyCollected += HandleKeyCollected;
     }
 
-    /*------------------ 公開 API ------------------*/
-    /* 短押し：取っ手のみ移動（即トグル）*/
+    void OnDestroy()
+    {
+        PlayerController.OnKeyCollected -= HandleKeyCollected;
+    }
+
+    /*========== 鍵取得イベントを受信 ==========*/
+    void HandleKeyCollected(string keyId)
+    {
+        if (keyId != requiredKeyId) return;
+
+        // 可視化 + Collider 有効化
+        if (srHandle) srHandle.enabled = true;
+        var col = GetComponent<Collider2D>();
+        if (col) col.enabled = true;
+
+        UpdateHandleSprite();
+        Debug.Log($"[Handle {name}] 解放 key={keyId}");
+    }
+
+    /*========== Fキー操作 ==========
+     * PlayerController から以下 API が呼ばれる
+     =================================*/
+
+    /*--- 短押し：取っ手のみ移動 ---*/
     public void StartMoveAlone()
     {
-        if (isMoving) return;
-        rail.Toggle();                        // ファスナー切替
-        UpdateHandleSprite();                 // 取っ手画像も切替
+        if (isMoving || !srHandle.enabled) return;
+
+        rail.Toggle();            // ファスナー状態を即切替
+        UpdateHandleSprite();
         StartCoroutine(MoveCoroutine(null));
     }
 
-    /* 長押し：プレイヤー付着（到達後トグル）*/
+    /*--- 長押し：プレイヤー付着移動 ---*/
     public void StartMoveWithPlayer(GameObject player)
     {
-        if (isMoving) return;
-        // ※ ここでは切替しない（到達後）
-        StartCoroutine(MoveCoroutine(player));
+        if (isMoving || !srHandle.enabled) return;
+
+        // プレイヤー方向へ一度だけ回転
+        if (rotateToPlayer && player && visualTF)
+        {
+            Vector2 dir = (player.transform.position - visualTF.position).normalized;
+            float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - spriteForwardAngle;
+            visualTF.rotation = Quaternion.Euler(0, 0, ang);
+        }
+
+        StartCoroutine(MoveCoroutine(player)); // トグルは到達後
     }
 
-    /*------------------ コルーチン ------------------*/
+    /*========== 移動コルーチン ==========*/
     IEnumerator MoveCoroutine(GameObject player)
     {
         isMoving = true;
@@ -84,24 +137,22 @@ public class HandleController : MonoBehaviour
 
         if (rbP) rbP.isKinematic = false;
 
-        /* 長押し時は到達後にトグル */
+        // 長押し時：到達後にファスナー状態トグル
         if (player != null)
         {
             rail.Toggle();
             UpdateHandleSprite();
         }
-
         isMoving = false;
     }
 
-    /*------------------ 内部ヘルパー ------------------*/
+    /*========== Sprite 切替 ==========*/
     void UpdateHandleSprite()
     {
         if (!srHandle || !rail) return;
 
-        if (rail.CurrentState == System_Fastener.State.Solid && solidHandleSprite)
-            srHandle.sprite = solidHandleSprite;
-        else if (rail.CurrentState == System_Fastener.State.Ghost && ghostHandleSprite)
-            srHandle.sprite = ghostHandleSprite;
+        srHandle.sprite = rail.CurrentState == System_Fastener.State.Solid
+            ? solidHandleSprite
+            : ghostHandleSprite;
     }
 }
