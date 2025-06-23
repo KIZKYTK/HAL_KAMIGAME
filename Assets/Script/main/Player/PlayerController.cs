@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,50 +8,84 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("移動速度")]
-    public float moveSpeed = 5f;
+    /*====== 1. 移動・ジャンプ ======*/
+    [Header("移動速度")] public float moveSpeed = 5f;
+    [Header("ジャンプ速度")] public float jumpForce = 12f;
 
-    [Header("ジャンプ力")]
-    public float jumpForce = 12f;
-
+    /*====== 2. Fキー ======*/
     [Header("Fキー設定")]
     public KeyCode interactKey = KeyCode.F;
-    public float holdThreshold = 0.25f;      // 長押し判定時間
+    public float holdThreshold = 0.25f;            // 長押し判定秒
 
+    /*====== 3. 接地判定 ======*/
     [Header("接地判定")]
     public Transform groundCheck;
-    public float groundCheckRadius = 0.08f;
+    public float groundCheckRadius = .08f;
     public LayerMask groundMask;
 
-    private Rigidbody2D rb;
-    private bool isGrounded = false;
-    private bool isSliding = false;
+    /*====== 4. 鍵システム ======*/
+    [Header("所持鍵セット")]
+    public HashSet<string> keyRing = new();
+    public static event Action<string> OnKeyCollected;      // 取っ手側が購読
 
-    private HandleController currentHandle;
+    /// <summary>外部から鍵取得を通知するラッパー</summary>
+    public static void BroadcastKeyCollected(string keyId)
+    {
+        OnKeyCollected?.Invoke(keyId);
+    }
 
-    private bool isPressingF; float fTime; bool slideTrig;
-    private float fPressedTime = 0f;
-    private bool slideTriggered = false;
+    /*====== 5. リスポーン ======*/
+    [Header("初期リスポーン位置(空=現在)")]
+    public Vector2 initialRespawnPos;
+    [HideInInspector] public Vector2 currentRespawnPos;
+    [Header("死亡→復活遅延秒")] public float respawnDelay = 1f;
+    [Header("フェード時間(0で無効)")] public float fadeTime = 0.3f;
 
+    /*====== 6. 一発リセット ======*/
+    [Header("リセットキー")]
+    public KeyCode resetKey = KeyCode.R;
+    public bool resetWithFade = false;
 
-    /*===== 鍵セット =====*/
-    public HashSet<string> keyRing = new HashSet<string>();
+    /*====== 7. 内部状態 ======*/
+    Rigidbody2D rb;
+    bool isGrounded, isSliding;
 
+    HandleController currentHandle;
+    bool isPressingF; float fTime; bool slideTrig;
+
+    /*--------------------------------------------------*/
+    /* 8. 初期化 */
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.freezeRotation = true;
 
-        if (groundCheck == null)
-            groundCheck = transform.Find("groundCheck");
+        if (!groundCheck) groundCheck = transform.Find("groundCheck");
     }
 
+    void Start()
+    {
+        currentRespawnPos = initialRespawnPos == Vector2.zero
+            ? (Vector2)transform.position
+            : initialRespawnPos;
+    }
+
+    /*--------------------------------------------------*/
+    /* 9. 毎フレーム */
     void Update()
     {
-        /*-- 接地判定 --*/
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
+        /*--- Rキー：リセット ---*/
+        if (Input.GetKeyDown(resetKey))
+        {
+            //if (resetWithFade) Die();
+            // else InstantRespawn();
+        }
 
-        /*-- 移動 & ジャンプ --*/
+        /*--- 接地判定 ---*/
+        isGrounded = Physics2D.OverlapCircle(
+            groundCheck.position, groundCheckRadius, groundMask);
+
+        /*--- 移動・ジャンプ ---*/
         if (!isSliding)
         {
             float h = Input.GetKey(KeyCode.D) ? 1 :
@@ -62,20 +97,19 @@ public class PlayerController : MonoBehaviour
         }
         else rb.velocity = Vector2.zero;
 
-        /*-- Fキー押下開始 --*/
+        /*--- Fキー押下 ---*/
         if (Input.GetKeyDown(interactKey))
-        {
-            isPressingF = true; fTime = 0; slideTrig = false;
-        }
+        { isPressingF = true; fTime = 0; slideTrig = false; }
 
-        /*-- 押下中（長押し判定） --*/
         if (isPressingF)
         {
             fTime += Time.deltaTime;
-            bool keyOK = currentHandle &&
-                         (currentHandle.requiredKeyId == "" ||          // 鍵不要
-                          keyRing.Contains(currentHandle.requiredKeyId)); // 鍵一致
 
+            bool keyOK = currentHandle &&
+                         (currentHandle.requiredKeyId == "" ||
+                          keyRing.Contains(currentHandle.requiredKeyId));
+
+            /* 長押し：プレイヤー付着 */
             if (!slideTrig &&
                 fTime >= holdThreshold &&
                 currentHandle && !currentHandle.isMoving &&
@@ -86,46 +120,63 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        /*-- Fキー離す（短押し判定） --*/
         if (Input.GetKeyUp(interactKey))
         {
             bool keyOK = currentHandle &&
                          (currentHandle.requiredKeyId == "" ||
                           keyRing.Contains(currentHandle.requiredKeyId));
 
+            /* 短押し：取っ手のみ移動 */
             if (!slideTrig &&
                 fTime < holdThreshold &&
                 currentHandle && !currentHandle.isMoving &&
                 keyOK)
-            {
                 currentHandle.StartMoveAlone();
-            }
 
             isPressingF = false; fTime = 0;
         }
 
-        /*-- スライド終了 --*/
+        /*--- スライド終了検知 ---*/
         if (isSliding && currentHandle && !currentHandle.isMoving)
             isSliding = false;
     }
 
-    /*―― 取っ手のトリガー判定 ――*/
+    /*--------------------------------------------------*/
+    /* 10. Trigger 判定 */
     void OnTriggerEnter2D(Collider2D other)
     {
+        /* 取っ手 */
         if (other.CompareTag("Handle"))
         {
-            HandleController hc = other.GetComponent<HandleController>();
-            if (hc != null) currentHandle = hc;
+            currentHandle = other.GetComponent<HandleController>();
+            return;
         }
+
+        /* 鍵アイテム */
+        if (other.CompareTag("Item"))
+        {
+            ItemEntity it = other.GetComponent<ItemEntity>();
+            if (it && keyRing.Add(it.keyId))
+            {
+                BroadcastKeyCollected(it.keyId);      // イベント発火
+                Debug.Log($"[Player] 鍵 {it.keyId} 取得");
+            }
+            Destroy(other.gameObject);
+        }
+
+        /* 死亡エリア */
+        // if (other.CompareTag("Death")) Die();
+
+        /* チェックポイント */
+        //  if (other.CompareTag("Respawn"))
+        //    currentRespawnPos = other.transform.position;
     }
 
     void OnTriggerExit2D(Collider2D other)
     {
-        if (other.CompareTag("Handle"))
-        {
-            HandleController hc = other.GetComponent<HandleController>();
-            if (hc != null && hc == currentHandle)
-                currentHandle = null;
-        }
+        if (other.CompareTag("Handle") &&
+            other.GetComponent<HandleController>() == currentHandle)
+            currentHandle = null;
     }
+
 }
