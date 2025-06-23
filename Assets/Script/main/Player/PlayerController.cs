@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -27,9 +28,13 @@ public class PlayerController : MonoBehaviour
 
     private HandleController currentHandle;
 
-    private bool isPressingF = false;
+    private bool isPressingF; float fTime; bool slideTrig;
     private float fPressedTime = 0f;
     private bool slideTriggered = false;
+
+
+    /*===== 鍵セット =====*/
+    public HashSet<string> keyRing = new HashSet<string>();
 
     void Awake()
     {
@@ -42,68 +47,65 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        /*―― 接地判定 ――*/
-        isGrounded = Physics2D.OverlapCircle(
-            groundCheck.position, groundCheckRadius, groundMask);
+        /*-- 接地判定 --*/
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundMask);
 
-        /*―― 水平移動 / ジャンプ ――*/
+        /*-- 移動 & ジャンプ --*/
         if (!isSliding)
         {
-            float h = 0;
-            if (Input.GetKey(KeyCode.A)) h = -1;
-            else if (Input.GetKey(KeyCode.D)) h = 1;
-
+            float h = Input.GetKey(KeyCode.D) ? 1 :
+                      Input.GetKey(KeyCode.A) ? -1 : 0;
             rb.velocity = new Vector2(h * moveSpeed, rb.velocity.y);
 
             if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
                 rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
-        else
-        {
-            rb.velocity = Vector2.zero;   // スライド中は固定
-        }
+        else rb.velocity = Vector2.zero;
 
-        /*―― Fキー処理 ――*/
+        /*-- Fキー押下開始 --*/
         if (Input.GetKeyDown(interactKey))
         {
-            isPressingF = true;
-            fPressedTime = 0f;
-            slideTriggered = false;
+            isPressingF = true; fTime = 0; slideTrig = false;
         }
 
+        /*-- 押下中（長押し判定） --*/
         if (isPressingF)
         {
-            fPressedTime += Time.deltaTime;
+            fTime += Time.deltaTime;
+            bool keyOK = currentHandle &&
+                         (currentHandle.requiredKeyId == "" ||          // 鍵不要
+                          keyRing.Contains(currentHandle.requiredKeyId)); // 鍵一致
 
-            // 長押しでプレイヤー付着スライド
-            if (!slideTriggered &&
-                fPressedTime >= holdThreshold &&
-                currentHandle != null &&
-                !currentHandle.isMoving)
+            if (!slideTrig &&
+                fTime >= holdThreshold &&
+                currentHandle && !currentHandle.isMoving &&
+                keyOK)
             {
-                slideTriggered = true;
-                isSliding = true;
+                slideTrig = true; isSliding = true;
                 currentHandle.StartMoveWithPlayer(gameObject);
             }
         }
 
+        /*-- Fキー離す（短押し判定） --*/
         if (Input.GetKeyUp(interactKey))
         {
-            // 短押しで取っ手のみスライド
-            if (!slideTriggered &&
-                fPressedTime < holdThreshold &&
-                currentHandle != null &&
-                !currentHandle.isMoving)
+            bool keyOK = currentHandle &&
+                         (currentHandle.requiredKeyId == "" ||
+                          keyRing.Contains(currentHandle.requiredKeyId));
+
+            if (!slideTrig &&
+                fTime < holdThreshold &&
+                currentHandle && !currentHandle.isMoving &&
+                keyOK)
             {
                 currentHandle.StartMoveAlone();
             }
 
-            isPressingF = false;
-            fPressedTime = 0f;
+            isPressingF = false; fTime = 0;
         }
 
-        /*―― スライド終了検知 ――*/
-        if (isSliding && currentHandle != null && !currentHandle.isMoving)
+        /*-- スライド終了 --*/
+        if (isSliding && currentHandle && !currentHandle.isMoving)
             isSliding = false;
     }
 

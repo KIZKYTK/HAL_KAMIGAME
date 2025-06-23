@@ -20,7 +20,7 @@ public class ItemEntity : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        Move_Player pc = other.GetComponent<Move_Player>();
+        PlayerController pc = other.GetComponent<PlayerController>();
         if (pc == null) return;
 
         if (pc.keyRing.Add(keyId))
