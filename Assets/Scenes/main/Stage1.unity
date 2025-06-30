@@ -853,7 +853,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 3.17, y: 2.49}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -903,7 +903,7 @@ SpriteRenderer:
   m_SortingLayerID: 685253609
   m_SortingLayer: 4
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 4e2c99ee948b9bc46b25f730ab08296a, type: 3}
   m_Color: {r: 1, g: 0.9129498, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1353,6 +1353,9 @@ MonoBehaviour:
   requiredKeyId: 
   solidHandleSprite: {fileID: 0}
   ghostHandleSprite: {fileID: 0}
+  rotateToPlayer: 1
+  spriteForwardAngle: 0
+  srHandle: {fileID: 0}
 --- !u!61 &750185669
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2386,6 +2389,12 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 384
+  initialRespawnPos: {x: 0, y: 0}
+  currentRespawnPos: {x: 0, y: 0}
+  respawnDelay: 1
+  fadeTime: 0.3
+  resetKey: 114
+  resetWithFade: 0
 --- !u!70 &1286115150
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -2541,6 +2550,9 @@ MonoBehaviour:
   requiredKeyId: 
   solidHandleSprite: {fileID: 0}
   ghostHandleSprite: {fileID: 0}
+  rotateToPlayer: 1
+  spriteForwardAngle: 0
+  srHandle: {fileID: 0}
 --- !u!61 &1416051504
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -3002,6 +3014,9 @@ MonoBehaviour:
   requiredKeyId: 
   solidHandleSprite: {fileID: 21300000, guid: a6711551734fcc640b679f09cb3c75a4, type: 3}
   ghostHandleSprite: {fileID: 21300000, guid: 15412478dbc8ee7448416df6b1dae8f1, type: 3}
+  rotateToPlayer: 1
+  spriteForwardAngle: 0
+  srHandle: {fileID: 0}
 --- !u!61 &2032239197
 BoxCollider2D:
   m_ObjectHideFlags: 0
