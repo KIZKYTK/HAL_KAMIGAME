@@ -91,9 +91,6 @@ public class HandleController : MonoBehaviour
     {
         if (isMoving || !srHandle.enabled) return;
 
-        var se = rail.GetComponentInChildren<SE>();
-        if (se != null) se.PlaySE();
-
         rail.Toggle();            // ファスナー状態を即切替
         UpdateHandleSprite();
         StartCoroutine(MoveCoroutine(null));
@@ -143,8 +140,6 @@ public class HandleController : MonoBehaviour
         // 長押し時：到達後にファスナー状態トグル
         if (player != null)
         {
-            var se = rail.GetComponentInChildren<SE>(); 
-            if (se != null) se.PlaySE();               
 
             rail.Toggle();
             UpdateHandleSprite();
