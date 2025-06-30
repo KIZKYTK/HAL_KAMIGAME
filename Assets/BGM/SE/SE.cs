@@ -14,6 +14,9 @@ public class SE : MonoBehaviour
 
     public void PlaySE()
     {
-        audioSource.PlayOneShot(seClip);
+        if (seClip != null)
+            audioSource.PlayOneShot(seClip);
+        else
+            Debug.LogWarning("SEクリップが設定されていません！");
     }
 }

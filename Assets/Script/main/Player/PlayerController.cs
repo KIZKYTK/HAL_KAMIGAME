@@ -28,6 +28,9 @@ public class PlayerController : MonoBehaviour
     public HashSet<string> keyRing = new();
     public static event Action<string> OnKeyCollected;      // 取っ手側が購読
 
+    /*====== 5. SE =========*/
+    PlayerSE playerSE;
+
     /// <summary>外部から鍵取得を通知するラッパー</summary>
     public static void BroadcastKeyCollected(string keyId)
     {
@@ -61,6 +64,7 @@ public class PlayerController : MonoBehaviour
         rb.freezeRotation = true;
 
         if (!groundCheck) groundCheck = transform.Find("groundCheck");
+        playerSE = GetComponent<PlayerSE>();
     }
 
     void Start()
@@ -139,6 +143,23 @@ public class PlayerController : MonoBehaviour
         /*--- スライド終了検知 ---*/
         if (isSliding && currentHandle && !currentHandle.isMoving)
             isSliding = false;
+
+        if (!isSliding)
+        {
+            float h = Input.GetKey(KeyCode.D) ? 1 :
+                      Input.GetKey(KeyCode.A) ? -1 : 0;
+            rb.velocity = new Vector2(h * moveSpeed, rb.velocity.y);
+
+            if (h != 0)
+                playerSE?.PlayMoveSE();
+
+            if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+            {
+                rb.velocity = new Vector2(rb.velocity.x, jumpForce);
+                playerSE?.PlayJumpSE();
+            }
+        }
+
     }
 
     /*--------------------------------------------------*/

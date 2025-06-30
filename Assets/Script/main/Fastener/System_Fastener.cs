@@ -15,6 +15,9 @@ public class System_Fastener : MonoBehaviour
     public Sprite solidSprite;              // 実体用画像
     public Sprite ghostSprite;              // 虚体用画像
 
+    [Header("状態切り替えのSE")]
+    private SE sePlayer;
+
     public State CurrentState { get; private set; }
     public float slideSpeed = 8f;           // 取っ手側が参照用に使う場合あり
 
@@ -34,9 +37,10 @@ public class System_Fastener : MonoBehaviour
     {
         edgeCol = GetComponent<EdgeCollider2D>();
         sr = GetComponent<SpriteRenderer>();
+        sePlayer = GetComponentInChildren<SE>();
     }
 
-    void Start() => SetState(stateInEditor, true);      // 実行時初期化
+    void Start() => SetState(stateInEditor, true); // 実行時初期化
 
     /*--- 外部からのトグル呼び出し ---*/
     public void Toggle() =>
@@ -64,6 +68,12 @@ public class System_Fastener : MonoBehaviour
             sr.sprite = solidSprite;
         else if (s == State.Ghost && ghostSprite)
             sr.sprite = ghostSprite;
+
+        // 効果音を再生（force = true の初期化時は鳴らさない）
+        if (!force && sePlayer != null)
+        {
+            sePlayer.PlaySE();
+        }
     }
 
     /// <summary>レール両端のワールド座標を返す</summary>
