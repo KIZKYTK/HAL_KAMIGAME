@@ -860,7 +860,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 361750708}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -29.51, y: -1.41, z: 0}
+  m_LocalPosition: {x: -38.44, y: -8.21, z: 0}
   m_LocalScale: {x: 0.2, y: 0.2, z: 0.2876985}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -895,7 +895,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 379607714}
-  m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
+  m_LocalRotation: {x: 0, y: -0, z: 0.7071068, w: -0.7071068}
   m_LocalPosition: {x: -30.48, y: 0.19, z: 0.15567072}
   m_LocalScale: {x: 1.6587608, y: 0.81004995, z: 1}
   m_ConstrainProportionsScale: 0
@@ -903,7 +903,7 @@ Transform:
   - {fileID: 300597287}
   m_Father: {fileID: 1116800493}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 270}
 --- !u!114 &379607716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2308,8 +2308,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1491626196}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -29.46, y: -3.57, z: 0.35297352}
-  m_LocalScale: {x: 5.73192, y: 1.5504199, z: 1}
+  m_LocalPosition: {x: -29.4956, y: -3.57, z: 0.35297352}
+  m_LocalScale: {x: 5.8032, y: 1.5504199, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2003048270}
@@ -2924,7 +2924,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveFlags: 1
   moveDistance: 16
-  moveSpeed: 2
+  moveSpeed: 5
 --- !u!1 &1842945922
 GameObject:
   m_ObjectHideFlags: 0
@@ -3302,7 +3302,7 @@ SpriteRenderer:
   m_SortingLayerID: 126822915
   m_SortingLayer: 3
   m_SortingOrder: 1
-  m_Sprite: {fileID: 21300000, guid: 15412478dbc8ee7448416df6b1dae8f1, type: 3}
+  m_Sprite: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -3310,7 +3310,7 @@ SpriteRenderer:
   m_Size: {x: 3.93, y: 1.5}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
 --- !u!1 &2003048269
